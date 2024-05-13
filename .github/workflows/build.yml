@@ -1,0 +1,30 @@
+name: Build Pre-Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+      - hml
+      - main
+  pull_request:
+    branches:
+      - dev
+      - hml
+      - main
+
+jobs:
+  print-message:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Build Completion Message
+        run: |
+          if [[ "$GITHUB_REF" == "refs/heads/dev" ]]; then
+            echo "Build Dev Completed"
+          elif [[ "$GITHUB_REF" == "refs/heads/hml" ]]; then
+            echo "Build Homolog Completed"
+          elif [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            echo "Build Production Completed"
+          else
+            echo "Unknown branch, build status unknown"
+          fi
