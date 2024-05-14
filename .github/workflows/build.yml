@@ -22,18 +22,16 @@ jobs:
       - name: Get latest tag
         id: get_latest_tag
         run: |
-          latest_tag=$(git describe --tags --match "v*.*.*-dev.*" --abbrev=0 --tags $(git rev-list --tags --max-count=1))
+          latest_tag=$(git describe --tags --match "v*.*.*-dev.*" --abbrev=0 --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "")
+          if [ -z "$latest_tag" ]; then
+            latest_tag="v0.0.0-dev.0"
+          fi
           echo "::set-output name=tag::$latest_tag"
 
       - name: Parse tag
         id: parse_tag
         run: |
-          if [ -z "${{ steps.get_latest_tag.outputs.tag }}" ]; then
-            echo "v0.0.0-dev.0" > latest_tag.txt
-          else
-            echo "${{ steps.get_latest_tag.outputs.tag }}" > latest_tag.txt
-          fi
-          IFS='.-' read -r -a parts <<< $(cat latest_tag.txt)
+          IFS='.-' read -r -a parts <<< "${{ steps.get_latest_tag.outputs.tag }}"
           major=${parts[0]:1}
           minor=${parts[1]}
           dev_seq=${parts[3]}
@@ -50,7 +48,6 @@ jobs:
           git tag -a "$new_tag" -m "Release $new_tag"
 
       - name: Push tags
-        if: github.event_name == 'pull_request'
         run: |
           git push --follow-tags origin HEAD:${{ github.head_ref }}
         env:
