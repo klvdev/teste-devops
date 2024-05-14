@@ -1,4 +1,4 @@
-name: Create Dev Release Tag
+name: Build Dev
 
 on:
   pull_request:
@@ -44,8 +44,12 @@ jobs:
         run: |
           new_tag="v${{ steps.parse_tag.outputs.major }}.${{ steps.parse_tag.outputs.minor }}.0-dev.${{ steps.parse_tag.outputs.dev_seq }}"
           echo "New tag: $new_tag"
+          echo "::set-output name=new_tag::$new_tag"
           git tag -a "$new_tag" -m "Release $new_tag"
-          git push origin "$new_tag"
 
-      - name: Output new tag
-        run: echo "Created new tag ${{ steps.create_tag.outputs.new_tag }}"
+      - name: Push new tag
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git
+          git push origin ${{ steps.create_tag.outputs.new_tag }}
