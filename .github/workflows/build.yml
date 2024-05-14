@@ -1,59 +1,59 @@
-name: Create Dev Release Tag
+# name: Create Dev Release Tag
 
-on:
-  pull_request:
-    branches:
-      - dev
-    types: [opened, synchronize, reopened]
+# on:
+#   pull_request:
+#     branches:
+#       - dev
+#     types: [opened, synchronize, reopened]
 
-jobs:
-  create-release:
-    name: Create Release Tag
-    runs-on: ubuntu-latest
+# jobs:
+#   create-release:
+#     name: Create Release Tag
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v2
 
-      - name: Set up Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+#       - name: Set up Git
+#         run: |
+#           git config --global user.name "github-actions[bot]"
+#           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Get latest tag
-        id: get_latest_tag
-        run: |
-          latest_tag=$(git describe --tags --match "v*.*.*-dev.*" --abbrev=0 --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "")
-          if [ -z "$latest_tag" ]; then
-            latest_tag="v0.0.0-dev.0"
-          fi
-          echo "Latest tag: $latest_tag"
-          echo "::set-output name=tag::$latest_tag"
+#       - name: Get latest tag
+#         id: get_latest_tag
+#         run: |
+#           latest_tag=$(git describe --tags --match "v*.*.*-dev.*" --abbrev=0 --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "")
+#           if [ -z "$latest_tag" ]; then
+#             latest_tag="v0.0.0-dev.0"
+#           fi
+#           echo "Latest tag: $latest_tag"
+#           echo "::set-output name=tag::$latest_tag"
 
-      - name: Parse tag
-        id: parse_tag
-        run: |
-          IFS='.-' read -r -a parts <<< "${{ steps.get_latest_tag.outputs.tag }}"
-          major=${parts[0]:1}
-          minor=${parts[1]}
-          dev_seq=${parts[3]}
-          new_minor=$((minor+1))
-          new_dev_seq=$((dev_seq+1))
-          new_tag="v${major}.${new_minor}.0-dev.${new_dev_seq}"
-          echo "New tag: $new_tag"
-          echo "::set-output name=new_tag::$new_tag"
+#       - name: Parse tag
+#         id: parse_tag
+#         run: |
+#           IFS='.-' read -r -a parts <<< "${{ steps.get_latest_tag.outputs.tag }}"
+#           major=${parts[0]:1}
+#           minor=${parts[1]}
+#           dev_seq=${parts[3]}
+#           new_minor=$((minor+1))
+#           new_dev_seq=$((dev_seq+1))
+#           new_tag="v${major}.${new_minor}.0-dev.${new_dev_seq}"
+#           echo "New tag: $new_tag"
+#           echo "::set-output name=new_tag::$new_tag"
 
-      - name: Create contents.zip
-        run: |
-          mkdir -p artifacts
-          echo "This is a dummy artifact" > artifacts/dummy.txt
-          zip -r -q contents.zip artifacts
+#       - name: Create contents.zip
+#         run: |
+#           mkdir -p artifacts
+#           echo "This is a dummy artifact" > artifacts/dummy.txt
+#           zip -r -q contents.zip artifacts
 
-      - name: Create Release Tag
-        uses: "marvinpinto/action-automatic-releases@v1.2.1"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: ${{ steps.parse_tag.outputs.new_tag }}
-          prerelease: true
-          title: ${{ steps.parse_tag.outputs.new_tag }}
-          files: contents.zip
+#       - name: Create Release Tag
+#         uses: "marvinpinto/action-automatic-releases@v1.2.1"
+#         with:
+#           repo_token: "${{ secrets.GITHUB_TOKEN }}"
+#           automatic_release_tag: ${{ steps.parse_tag.outputs.new_tag }}
+#           prerelease: true
+#           title: ${{ steps.parse_tag.outputs.new_tag }}
+#           files: contents.zip
