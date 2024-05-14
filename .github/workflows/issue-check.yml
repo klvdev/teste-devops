@@ -1,0 +1,29 @@
+name: Verificação de Issue Associada no PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-issue-link:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar se a branch dev possui issue associada
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Instalar o GitHub CLI
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh
+
+          REPO=${{ github.repository }}
+
+          # Verificar se a branch dev tem pelo menos uma issue associada
+          ISSUES_ASSOCIATED_WITH_DEV=$(gh issue list --repo $REPO --label "dev" --state open | wc -l)
+
+          if [ $ISSUES_ASSOCIATED_WITH_DEV -eq 0 ]; then
+            echo "Nenhuma issue associada à branch dev foi encontrada."
+            exit 1
+          fi
