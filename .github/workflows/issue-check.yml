@@ -6,9 +6,11 @@ on:
 
 jobs:
   check-issue-link:
-    runs-on: ubuntu-latest
+        runs-on: ubuntu-latest
     steps:
       - name: Verificar se a pull request está associada a uma issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
           REPO=${{ github.repository }}
