@@ -21,7 +21,7 @@ jobs:
           REPO=${{ github.repository }}
 
           # Verificar se a branch dev tem pelo menos uma issue associada
-          ISSUES_ASSOCIATED_WITH_DEV=$(gh issue list --repo $REPO --label "dev" --state open | wc -l)
+          ISSUES_ASSOCIATED_WITH_DEV=$(gh issue list --repo $REPO --label "dev" --state open --limit 1 | wc -l)
 
           if [ $ISSUES_ASSOCIATED_WITH_DEV -eq 0 ]; then
             echo "Nenhuma issue associada à branch dev foi encontrada."
