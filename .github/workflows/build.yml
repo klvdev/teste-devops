@@ -1,30 +1,51 @@
-name: Build Pre-Release
+name: Create Dev Release Tag
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - dev
-      - hml
-      - main
   pull_request:
     branches:
       - dev
-      - hml
-      - main
+    types: [opened, synchronize, reopened]
 
 jobs:
-  print-message:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Print Build Completion Message
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Git
         run: |
-          if [[ "$GITHUB_REF" == "refs/heads/dev" ]]; then
-            echo "Build Dev Completed"
-          elif [[ "$GITHUB_REF" == "refs/heads/hml" ]]; then
-            echo "Build Homolog Completed"
-          elif [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
-            echo "Build Production Completed"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: echo ::set-output name=tag::$(git describe --tags --match "v*.*.*-dev.*" --abbrev=0 --tags $(git rev-list --tags --max-count=1))
+
+      - name: Parse tag
+        id: parse_tag
+        run: |
+          if [ -z "${{ steps.get_latest_tag.outputs.tag }}" ]; then
+            echo "v0.0.0-dev.0" > latest_tag.txt
           else
-            echo "Unknown branch, build status unknown"
+            echo "${{ steps.get_latest_tag.outputs.tag }}" > latest_tag.txt
           fi
+          IFS='.-' read -r -a parts <<< $(cat latest_tag.txt)
+          major=${parts[0]:1}
+          minor=${parts[1]}
+          dev_seq=${parts[3]}
+          echo "::set-output name=major::$major"
+          echo "::set-output name=minor::$((minor+1))"
+          echo "::set-output name=dev_seq::$((dev_seq+1))"
+
+      - name: Create new tag
+        id: create_tag
+        run: |
+          new_tag="v${{ steps.parse_tag.outputs.major }}.${{ steps.parse_tag.outputs.minor }}.0-dev.${{ steps.parse_tag.outputs.dev_seq }}"
+          echo "New tag: $new_tag"
+          git tag -a "$new_tag" -m "Release $new_tag"
+          git push origin "$new_tag"
+
+      - name: Output new tag
+        run: echo "Created new tag ${{ steps.create_tag.outputs.new_tag }}"
