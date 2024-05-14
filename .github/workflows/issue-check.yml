@@ -8,22 +8,18 @@ jobs:
   check-issue-link:
     runs-on: ubuntu-latest
     steps:
-      - name: Verificar se a branch dev possui issue associada
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verificar se a pull request está associada a uma issue
         run: |
-          # Instalar o GitHub CLI
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt update
-          sudo apt install gh
-
+          PR_NUMBER=${{ github.event.pull_request.number }}
           REPO=${{ github.repository }}
 
-          # Verificar se a branch dev tem pelo menos uma issue associada
-          ISSUES_ASSOCIATED_WITH_DEV=$(gh issue list --repo $REPO --label "dev" --state open --limit 1 | wc -l)
+          # Extrair o nome do repositório
+          REPO_NAME=$(echo $REPO | cut -d '/' -f 2)
+          
+          # Verificar se há referência à pull request em alguma issue aberta no repositório
+          ISSUE_REFERENCING_PR=$(gh issue list --repo $REPO --state open --label "pull request" --search "is:open repo:$REPO_NAME$PR_NUMBER")
 
-          if [ $ISSUES_ASSOCIATED_WITH_DEV -eq 0 ]; then
-            echo "Nenhuma issue associada à branch dev foi encontrada."
+          if [ -z "$ISSUE_REFERENCING_PR" ]; then
+            echo "Esta pull request não está associada a nenhuma issue."
             exit 1
           fi
