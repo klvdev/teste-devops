@@ -1,4 +1,4 @@
-name: Build Dev
+name: Create Dev Release Tag
 
 on:
   pull_request:
@@ -21,7 +21,9 @@ jobs:
 
       - name: Get latest tag
         id: get_latest_tag
-        run: echo ::set-output name=tag::$(git describe --tags --match "v*.*.*-dev.*" --abbrev=0 --tags $(git rev-list --tags --max-count=1))
+        run: |
+          latest_tag=$(git describe --tags --match "v*.*.*-dev.*" --abbrev=0 --tags $(git rev-list --tags --max-count=1))
+          echo "::set-output name=tag::$latest_tag"
 
       - name: Parse tag
         id: parse_tag
@@ -47,9 +49,10 @@ jobs:
           echo "::set-output name=new_tag::$new_tag"
           git tag -a "$new_tag" -m "Release $new_tag"
 
-      - name: Push new tag
-        env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      - name: Push tags
+        if: github.event_name == 'pull_request'
         run: |
-          git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git
-          git push origin ${{ steps.create_tag.outputs.new_tag }}
+          git push --follow-tags origin HEAD:${{ github.head_ref }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
