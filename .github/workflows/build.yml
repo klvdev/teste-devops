@@ -7,10 +7,8 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  build:
-    permissions:
-      contents: write
-      packages: write
+  create-release:
+    name: Create Release Tag
     runs-on: ubuntu-latest
 
     steps:
@@ -29,6 +27,7 @@ jobs:
           if [ -z "$latest_tag" ]; then
             latest_tag="v0.0.0-dev.0"
           fi
+          echo "Latest tag: $latest_tag"
           echo "::set-output name=tag::$latest_tag"
 
       - name: Parse tag
@@ -38,21 +37,23 @@ jobs:
           major=${parts[0]:1}
           minor=${parts[1]}
           dev_seq=${parts[3]}
-          echo "::set-output name=major::$major"
-          echo "::set-output name=minor::$((minor+1))"
-          echo "::set-output name=dev_seq::$((dev_seq+1))"
-
-      - name: Create new tag
-        id: create_tag
-        run: |
-          new_tag="v${{ steps.parse_tag.outputs.major }}.${{ steps.parse_tag.outputs.minor }}.0-dev.${{ steps.parse_tag.outputs.dev_seq }}"
+          new_minor=$((minor+1))
+          new_dev_seq=$((dev_seq+1))
+          new_tag="v${major}.${new_minor}.0-dev.${new_dev_seq}"
           echo "New tag: $new_tag"
           echo "::set-output name=new_tag::$new_tag"
-          git tag -a "$new_tag" -m "Release $new_tag"
 
-      - name: Push tags
+      - name: Create contents.zip
         run: |
-          git push --follow-tags origin HEAD:${{ github.head_ref }}
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          mkdir -p artifacts
+          echo "This is a dummy artifact" > artifacts/dummy.txt
+          zip -r -q contents.zip artifacts
+
+      - name: Create Release Tag
+        uses: "marvinpinto/action-automatic-releases@v1.2.1"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: ${{ steps.parse_tag.outputs.new_tag }}
+          prerelease: true
+          title: ${{ steps.parse_tag.outputs.new_tag }}
+          files: contents.zip
