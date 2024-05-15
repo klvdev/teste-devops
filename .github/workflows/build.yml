@@ -1,4 +1,4 @@
-name: Build
+name: Create Release Tag
 
 on:
   push:
@@ -37,6 +37,7 @@ jobs:
       id: get_version
       run: |
         version=$(cat .version)
+        echo "Current version is $version"
         echo "::set-output name=version::$version"
 
     - name: Determine environment suffix
@@ -55,7 +56,7 @@ jobs:
       run: |
         version=${{ steps.get_version.outputs.version }}
         env_suffix=${{ steps.set_env_suffix.outputs.env_suffix }}
-        
+
         if [[ $env_suffix != "prd" ]]; then
           # Get the latest tag for the same base version
           latest_tag=$(git tag --list "${version}-${env_suffix}.*" --sort=-v:refname | head -n 1)
@@ -72,6 +73,7 @@ jobs:
           new_version="$version"
         fi
 
+        echo "New version is $new_version"
         echo "::set-output name=new_version::$new_version"
 
     - name: Create and push tag
