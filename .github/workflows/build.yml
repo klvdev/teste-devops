@@ -1,55 +1,69 @@
-name: Create Dev Release Tag
+name: "Build"
 
 on:
-  pull_request:
+  push:
     branches:
       - dev
-    types: [opened, synchronize, reopened]
+      - hml
+      - main
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  create-tag:
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/hml' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        include:
+          - branch: dev
+            env_name: Dev
+            suffix: "dev"
+          - branch: hml
+            env_name: Hml
+            suffix: "hml"
+          - branch: main
+            env_name: Prd
+            suffix: ""
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0 # Ensure full history is fetched
 
-      - name: Set up Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
 
-      - name: Get latest tag
-        id: get_latest_tag
+      - name: Determine version
         run: |
-          latest_tag=$(git describe --tags --match "v*.*.*-dev.*" --abbrev=0 --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "")
-          if [ -z "$latest_tag" ]; then
-            latest_tag="v0.0.0-dev.0"
+          # Determine the base version (X.Y.Z) from the package.json
+          BASE_VERSION=$(node -p "require('./package.json').version")
+
+          # Get the build number
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+
+          # Determine the suffix based on the branch
+          if [ "${{ matrix.env_name }}" == "Prd" ]; then
+            VERSION="$BASE_VERSION"
+          else
+            VERSION="$BASE_VERSION-${{ matrix.suffix }}.$BUILD_NUMBER"
           fi
-          echo "::set-output name=tag::$latest_tag"
 
-      - name: Parse tag
-        id: parse_tag
-        run: |
-          IFS='.-' read -r -a parts <<< "${{ steps.get_latest_tag.outputs.tag }}"
-          major=${parts[0]:1}
-          minor=${parts[1]}
-          dev_seq=${parts[3]}
-          echo "::set-output name=major::$major"
-          echo "::set-output name=minor::$((minor+1))"
-          echo "::set-output name=dev_seq::$((dev_seq+1))"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Create new tag
-        id: create_tag
-        run: |
-          new_tag="v${{ steps.parse_tag.outputs.major }}.${{ steps.parse_tag.outputs.minor }}.0-dev.${{ steps.parse_tag.outputs.dev_seq }}"
-          echo "New tag: $new_tag"
-          echo "::set-output name=new_tag::$new_tag"
-          git tag -a "$new_tag" -m "Release $new_tag"
+      - name: Print version
+        run: echo "Creating tag for version ${{ env.VERSION }}"
 
-      - name: Push tags
+      - name: Create Release Tag
         run: |
-          git push --follow-tags origin HEAD:${{ github.head_ref }}
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git tag -a "${{ env.VERSION }}" -m "Release ${{ env.VERSION }}"
+          git push origin "${{ env.VERSION }}"
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+>>>>>>> Stashed changes
